@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PocketPack - Offline AI Learning Demo</title>
+<style>
+:root{--bg:#f2f4f8;--card:#fff;--ink:#172033;--mute:#5a6478;--line:#d9dfea;--acc:#2f4ccf;--accink:#fff;--hl:#ffe98a;--hlink:#4a3a00;--stop:#b4381f;--stopbg:#fdeee9;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1320;--card:#171e30;--ink:#e7ebf5;--mute:#98a3bb;--line:#27314a;--acc:#7f96ff;--accink:#0e1320;--hl:#5c4b10;--hlink:#ffeaa0;--stop:#ff9c85;--stopbg:#2e1814}}
+:root[data-theme="dark"]{--bg:#0e1320;--card:#171e30;--ink:#e7ebf5;--mute:#98a3bb;--line:#27314a;--acc:#7f96ff;--accink:#0e1320;--hl:#5c4b10;--hlink:#ffeaa0;--stop:#ff9c85;--stopbg:#2e1814}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:flex;flex-direction:column;height:100%;max-width:720px;margin:0 auto}
+header{padding:12px 16px 8px}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h1{font-size:19px;margin:0;flex:1;font-weight:700}
+.sub{color:var(--mute);font-size:13px;margin:2px 0 0}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--card);color:var(--ink);padding:6px 11px;font:inherit;font-size:14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--accink);font-weight:600}
+.ghost{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 11px;font:inherit;font-size:14px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+main{flex:1;overflow-y:auto;padding:8px 16px 12px}
+.msg{max-width:88%;margin:10px 0;padding:10px 13px;border-radius:12px}
+.u{margin-left:auto;background:var(--acc);color:var(--accink);border-bottom-right-radius:3px}
+.b{background:var(--card);border:1px solid var(--line);border-bottom-left-radius:3px}
+.b p{margin:0 0 8px;font-family:Georgia,"Times New Roman",serif;font-size:17px;line-height:1.55}
+.src{display:inline;background:var(--hl);color:var(--hlink);padding:2px 6px;border-radius:3px;font-size:13.5px;font-weight:600;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.hit{color:var(--mute);font-size:12.5px;margin-top:7px}
+.oos{background:var(--stopbg);border:1.5px solid var(--stop)}
+.oos .tag{display:inline-block;color:var(--stop);border:1.5px solid var(--stop);border-radius:4px;padding:1px 7px;font-weight:700;font-size:13px;margin-bottom:6px;transform:rotate(-1.5deg)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0}
+.card h3{margin:0 0 4px;font-size:16px}
+.card p{margin:8px 0 0;font-family:Georgia,serif;font-size:15.5px}
+footer{padding:6px 16px 10px;border-top:1px solid var(--line);background:var(--bg)}
+#chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;white-space:nowrap}
+#chips button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+#chips button.x{border-style:dashed;color:var(--stop);border-color:var(--stop)}
+.row{display:flex;gap:8px}
+input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+.go{border:0;background:var(--acc);color:var(--accink);border-radius:10px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}
+.note{color:var(--mute);font-size:12px;margin:8px 0 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="top">
+    <h1>PocketPack</h1>
+    <div class="seg" role="group" aria-label="Language">
+      <button id="len" aria-pressed="true">EN</button><button id="lms" aria-pressed="false">BM</button>
+    </div>
+    <button class="ghost" id="tog"></button>
+  </div>
+  <p class="sub" id="sub"></p>
+</header>
+<main id="chat" aria-live="polite"></main>
+<main id="pack" hidden></main>
+<footer>
+  <div id="chips"></div>
+  <div class="row">
+    <input id="q" type="text" autocomplete="off" enterkeyhint="send">
+    <button class="go" id="send"></button>
+  </div>
+  <p class="note" id="note"></p>
+</footer>
+</div>
+<script>
+const PACK={name:{en:"TVET Workshop Basics (sample pack)",ms:"Asas Bengkel TVET (pek contoh)"},items:[
+{t:{en:"Workshop safety and PPE",ms:"Keselamatan bengkel dan PPE"},
+ q:{en:"What PPE do I need in a workshop?",ms:"Apakah PPE yang perlu dipakai di bengkel?"},
+ k:["ppe","personal protective equipment","peralatan perlindungan diri","workshop safety","keselamatan bengkel","safety","safety glasses","safety shoes","cermin mata keselamatan","kasut keselamatan","glove","sarung tangan","ear protection","pelindung telinga"],
+ a:{en:"Personal protective equipment (PPE) protects you from workshop hazards. Wear safety glasses for your eyes, safety shoes for your feet, gloves suited to the task, and ear protection in noisy areas. Tie back long hair, remove jewellery and wear fitted clothing so nothing catches in moving machinery.",
+    ms:"Peralatan perlindungan diri (PPE) melindungi anda daripada bahaya bengkel. Pakai cermin mata keselamatan untuk mata, kasut keselamatan untuk kaki, sarung tangan yang sesuai dengan tugas, dan pelindung telinga di kawasan bising. Ikat rambut panjang, tanggalkan perhiasan dan pakai pakaian yang muat supaya tiada yang tersangkut pada mesin yang bergerak."}},
+{t:{en:"Ohm's law",ms:"Hukum Ohm"},
+ q:{en:"What is Ohm's law?",ms:"Apakah hukum Ohm?"},
+ k:["ohm s law","hukum ohm","ohm","voltage","voltan","current","arus","resistance","rintangan","resistor","perintang","ampere","volt"],
+ a:{en:"Ohm's law links voltage, current and resistance: V = I × R. Voltage (V) is measured in volts, current (I) in amperes and resistance (R) in ohms. For example, a 12 V supply across a 4 ohm resistor gives a current of 3 A (12 ÷ 4).",
+    ms:"Hukum Ohm menghubungkan voltan, arus dan rintangan: V = I × R. Voltan (V) diukur dalam volt, arus (I) dalam ampere dan rintangan (R) dalam ohm. Contohnya, bekalan 12 V merentasi perintang 4 ohm menghasilkan arus 3 A (12 ÷ 4)."}},
+{t:{en:"Using a vernier caliper",ms:"Menggunakan angkup vernier"},
+ q:{en:"How do I read a vernier caliper?",ms:"Bagaimana membaca angkup vernier?"},
+ k:["vernier","caliper","calliper","angkup","angkup vernier","measuring tools","alat ukur","main scale","skala utama"],
+ a:{en:"A vernier caliper measures length, outside diameter, inside diameter and depth to a fraction of a millimetre (commonly 0.02 mm). Read the main scale first to get the whole millimetres, then find the vernier scale line that lines up exactly with a main-scale line to get the fraction.",
+    ms:"Angkup vernier mengukur panjang, diameter luar, diameter dalam dan kedalaman sehingga pecahan milimeter (lazimnya 0.02 mm). Baca skala utama dahulu untuk mendapatkan milimeter penuh, kemudian cari garisan skala vernier yang tepat sejajar dengan garisan skala utama untuk mendapatkan pecahan."}},
+{t:{en:"The four-stroke engine",ms:"Enjin empat lejang"},
+ q:{en:"What are the four strokes of an engine?",ms:"Apakah empat lejang enjin?"},
+ k:["four stroke","four strokes","4 stroke","empat lejang","stroke","lejang","engine","enjin","piston","omboh","intake","compression","exhaust","crankshaft","aci engkol"],
+ a:{en:"A four-stroke petrol engine completes one cycle in four piston strokes: intake (air-fuel mixture enters), compression (the mixture is squeezed), power (the spark ignites it and pushes the piston down) and exhaust (burnt gases leave). One cycle takes two full turns of the crankshaft.",
+    ms:"Enjin petrol empat lejang melengkapkan satu kitaran dalam empat lejang omboh: sedutan (campuran udara-bahan api masuk), mampatan (campuran dimampatkan), kuasa (percikan api membakarnya dan menolak omboh ke bawah) dan ekzos (gas terbakar keluar). Satu kitaran mengambil dua putaran penuh aci engkol."}},
+{t:{en:"Using a multimeter",ms:"Menggunakan multimeter"},
+ q:{en:"How do I measure voltage with a multimeter?",ms:"Bagaimana mengukur voltan dengan multimeter?"},
+ k:["multimeter","probe","measure voltage","measure current","measure resistance","mengukur voltan","ukur voltan","series","parallel","bersiri","selari"],
+ a:{en:"A multimeter measures voltage, current and resistance. To measure voltage, set the dial to the voltage range and connect the probes in parallel across the component. To measure current, connect the meter in series with the circuit. To measure resistance, switch the circuit off first and connect the probes across the component.",
+    ms:"Multimeter mengukur voltan, arus dan rintangan. Untuk mengukur voltan, tetapkan dail pada julat voltan dan sambungkan probe secara selari merentasi komponen. Untuk mengukur arus, sambungkan meter secara bersiri dengan litar. Untuk mengukur rintangan, matikan litar dahulu dan sambungkan probe merentasi komponen."}},
+{t:{en:"Electrical safety and lockout",ms:"Keselamatan elektrik dan kunci keluar"},
+ q:{en:"How do I make electrical work safe?",ms:"Bagaimana memastikan kerja elektrik selamat?"},
+ k:["electrical safety","keselamatan elektrik","electrical","elektrik","lockout","tagout","lock out","isolat*","live circuit","live circuits","electric shock","kejutan elektrik","insulated","berpenebat","asingkan","pengasing"],
+ a:{en:"Before working on electrical equipment, isolate it from the power supply, lock and tag the isolator (lockout/tagout) so nobody can switch it on, and test with a meter that the circuit is dead. Never work on live circuits unless it is part of an authorised procedure. Keep hands and floors dry and use insulated tools.",
+    ms:"Sebelum bekerja pada peralatan elektrik, asingkan ia daripada bekalan kuasa, kunci dan tag pengasing (kunci keluar/tag keluar) supaya tiada sesiapa dapat menghidupkannya, dan uji dengan meter bahawa litar tidak berarus. Jangan bekerja pada litar hidup kecuali sebahagian daripada prosedur yang dibenarkan. Pastikan tangan dan lantai kering dan gunakan alatan berpenebat."}},
+{t:{en:"Soldering",ms:"Pematerian"},
+ q:{en:"How do I solder a joint?",ms:"Bagaimana mematri sambungan?"},
+ k:["solder","soldering","pateri","besi pateri","pematerian","mematri","flux","fluks"],
+ a:{en:"Soldering joins electronic parts using solder, a metal alloy that melts at a lower temperature than the parts being joined. Heat the joint and the component lead together with the soldering iron tip, then touch the solder to the joint, not the tip. Remove the solder, then the iron. A good joint is shiny and smooth. Work in a ventilated area so you do not breathe in flux fumes.",
+    ms:"Pematerian menyambung komponen elektronik menggunakan pateri, iaitu aloi logam yang cair pada suhu lebih rendah daripada bahagian yang disambung. Panaskan sambungan dan kaki komponen bersama-sama dengan hujung besi pateri, kemudian sentuhkan pateri pada sambungan, bukan pada hujung besi. Alihkan pateri, kemudian besi pateri. Sambungan yang baik berkilat dan licin. Bekerja di kawasan berudara supaya tidak menyedut wasap fluks."}}
+]};
+const OOS={en:"What is the best phone to buy?",ms:"Telefon apa yang terbaik untuk dibeli?"};
+const T={
+en:{sub:"Offline AI learning demo. Answers only from the pack.",tog:"View pack",back:"Back to chat",ph:"Ask a question about the pack",send:"Ask",sec:"Section",src:"Source",hit:"Matched",stop:"Outside the knowledge pack",
+ oos:"I can only answer from the knowledge pack, and this question isn't covered, so I won't guess. Try one of the topics below, or ask your teacher.",
+ hello:"Hi, I'm PocketPack. I answer only from the loaded knowledge pack: {p}. Every answer shows its source, and I'll say so when something isn't covered.",
+ note:"Runs in your browser with no network calls. Demo engine: keyword retrieval over the pack. The full version uses a small on-device model and measures answer faithfulness on a test set."},
+ms:{sub:"Demo pembelajaran AI luar talian. Menjawab daripada pek sahaja.",tog:"Lihat pek",back:"Kembali ke sembang",ph:"Tanya soalan tentang pek",send:"Tanya",sec:"Bahagian",src:"Sumber",hit:"Dipadankan",stop:"Di luar pek pengetahuan",
+ oos:"Saya hanya boleh menjawab berdasarkan pek pengetahuan dan soalan ini tiada di dalamnya, jadi saya tidak akan meneka. Cuba salah satu topik di bawah, atau tanya guru anda.",
+ hello:"Hai, saya PocketPack. Saya hanya menjawab berdasarkan pek pengetahuan yang dimuatkan: {p}. Setiap jawapan menunjukkan sumbernya, dan saya akan memberitahu jika sesuatu tiada dalam pek.",
+ note:"Berjalan dalam pelayar tanpa panggilan rangkaian. Enjin demo: carian kata kunci dalam pek. Versi penuh menggunakan model kecil pada peranti dan mengukur kesetiaan jawapan melalui set ujian."}};
+let L="en",view="chat";
+const $=s=>document.querySelector(s);
+const chat=$("#chat"),pack=$("#pack"),inp=$("#q");
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function norm(s){return s.toLowerCase().replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim()}
+function srcOf(i){return PACK.name[L]+", "+T[L].sec+" "+(i+1)+": "+PACK.items[i].t[L]}
+function match(q){
+  const n=" "+norm(q)+" ",toks=n.trim().split(" ").filter(Boolean);let best=null;
+  PACK.items.forEach((it,i)=>{let s=0,hit=[];
+    it.k.forEach(k=>{
+      if(k.includes(" ")){if(n.includes(" "+k+" ")){s+=3;hit.push(k)}}
+      else if(k.endsWith("*")){const p=k.slice(0,-1),t=toks.find(t=>t.startsWith(p));if(t){s+=2;hit.push(t)}}
+      else{const t=toks.find(t=>t===k||t===k+"s"||t===k+"es");if(t){s+=2;hit.push(t)}}
+    });
+    if(!best||s>best.s)best={i,s,hit:[...new Set(hit)]};
+  });
+  return best&&best.s>=2?best:null;
+}
+function add(n){chat.appendChild(n);chat.scrollTop=chat.scrollHeight}
+function ask(text){
+  text=(text||"").trim();if(!text)return;
+  setView("chat");add(el("div","msg u",text));
+  const m=match(text),b=el("div","msg b");
+  if(m){
+    b.appendChild(el("p","",PACK.items[m.i].a[L]));
+    b.appendChild(el("span","src",T[L].src+": "+srcOf(m.i)));
+    b.appendChild(el("div","hit",T[L].hit+": "+m.hit.join(", ")));
+  }else{
+    b.className="msg b oos";
+    b.appendChild(el("div","tag",T[L].stop));
+    b.appendChild(el("p","",T[L].oos));
+  }
+  add(b);inp.value="";
+}
+function renderChips(){
+  const c=$("#chips");c.innerHTML="";
+  PACK.items.slice(0,4).forEach(it=>{const b=el("button","",it.q[L]);b.onclick=()=>ask(it.q[L]);c.appendChild(b)});
+  const x=el("button","x",OOS[L]);x.onclick=()=>ask(OOS[L]);c.appendChild(x);
+}
+function renderPack(){
+  pack.innerHTML="";
+  PACK.items.forEach((it,i)=>{const d=el("div","card");
+    d.appendChild(el("h3","",T[L].sec+" "+(i+1)+": "+it.t[L]));
+    d.appendChild(el("span","src",srcOf(i)));
+    d.appendChild(el("p","",it.a[L]));pack.appendChild(d)});
+}
+function setView(v){view=v;chat.hidden=v!=="chat";pack.hidden=v!=="pack";$("#tog").textContent=v==="chat"?T[L].tog:T[L].back}
+function setLang(l){
+  L=l;document.documentElement.lang=l;
+  $("#len").setAttribute("aria-pressed",l==="en");$("#lms").setAttribute("aria-pressed",l==="ms");
+  $("#sub").textContent=T[l].sub;$("#send").textContent=T[l].send;inp.placeholder=T[l].ph;$("#note").textContent=T[l].note;
+  renderChips();renderPack();setView(view);
+}
+$("#len").onclick=()=>setLang("en");
+$("#lms").onclick=()=>setLang("ms");
+$("#tog").onclick=()=>setView(view==="chat"?"pack":"chat");
+$("#send").onclick=()=>ask(inp.value);
+inp.addEventListener("keydown",e=>{if(e.key==="Enter")ask(inp.value)});
+setLang("en");
+add(el("div","msg b",T.en.hello.replace("{p}",PACK.name.en)));
+</script>
+</body>
+</html>
